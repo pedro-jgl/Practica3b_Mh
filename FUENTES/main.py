@@ -148,6 +148,7 @@ def busquedaLocal(Xtrain, Ytrain, Xtest, Ytest):
         Wmod = W.copy()
         # Usamos una mutación normal con media 0 y desviación típica 0.3, después truncamos para que el valor esté en [0,1]
         Wmod[pos] += rng.normal(scale=0.3)
+        # Wmod = Wmod.clip(0,1)
         if Wmod[pos] < 0:
             Wmod[pos] = 0.0
         elif Wmod[pos] > 1:
