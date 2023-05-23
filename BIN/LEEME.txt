@@ -1,0 +1,12 @@
+En este fichero, especificaré una breve descripción de cada uno de los archivos de esta práctica.
+
+En la carpeta /BIN, encontramos los datos de la práctica, cuyos ficheros son: 
+  - diabetes_1.arff, diabetes_2.arff, diabetes_3.arff, diabetes_4.arff, diabetes_5.arff. Estos ficheros contienen
+    los datos de la práctica, son usados en el caso de clasificar si los pacientes desarrollarán diabetes en los próximos 5 años.
+  - ozone-320_1.arff, ozone-320_2.arff, ozone-320_3.arff, ozone-320_4.arff, ozone-320_5.arff. Estos ficheros contienen
+    los datos de la práctica, son usados en el caso de determinación del nivel de ozono.
+  - spectf-heart_1.arff, spectf-heart_2.arff, spectf-heart_3.arff, spectf-heart_4.arff, spectf-heart_5.arff. Estos ficheros contienen
+    los datos de la práctica, son usados en el caso de determinar si la fisiología del corazón analizado es o no correcta.
+En esta carpeta también está este fichero, LEEME.txt, que contiene la descripción de los ficheros de la práctica.
+
+En la carpeta /FUENTES, encontramos un único fichero, que es el código fuente de la práctica, es el fichero main.py.
