@@ -119,17 +119,24 @@ def fitness(tasa_clas, tasa_red):
 # Implementación del algoritmo de búsqueda local
 # param Xtrain = datos entrenamiento
 # param Ytrain = clases entrenamiento
-# param W = pesos
-# return W = pesos, fit = fitness, eval = evaluaciones
-def busquedaLocal(Xtrain, Ytrain, W, fit):
+# param Xtest = datos test
+# param Ytest = clases test
+# return W = pesos, fit = fitness, tasa_clas = tasa de clasificación, tasa_red = tasa de reducción
+def busquedaLocal(Xtrain, Ytrain, Xtest, Ytest):
+    start = time.process_time()
+
     num_caract = Xtrain.shape[1]
     mutadas = np.ones(num_caract)
     eval = 0
     generados = 0
-    iteraciones = 2.0 * W.size
 
+    # Generamos una solución inicial aleatoria
+    W = rng.random(num_caract)
 
-    while eval < iteraciones:
+    # Calculamos el fitness de la solución inicial
+    fit = fitness(tasaClasificacion(Xtrain, Xtrain, Ytrain, Ytrain, W), tasaReduccion(W))
+
+    while True:
         # Mutamos una componente aleatoria sin repetición (emulamos un bucle do-while)
         while True:
             pos = rng.integers(num_caract)
@@ -141,7 +148,10 @@ def busquedaLocal(Xtrain, Ytrain, W, fit):
         Wmod = W.copy()
         # Usamos una mutación normal con media 0 y desviación típica 0.3, después truncamos para que el valor esté en [0,1]
         Wmod[pos] += rng.normal(scale=0.3)
-        Wmod = np.clip(Wmod, 0, 1)
+        if Wmod[pos] < 0:
+            Wmod[pos] = 0.0
+        elif Wmod[pos] > 1:
+            Wmod[pos] = 1.0
 
         generados += 1
 
@@ -158,9 +168,74 @@ def busquedaLocal(Xtrain, Ytrain, W, fit):
         elif generados % num_caract == 0:
             mutadas = np.ones(num_caract)
 
+        # Detenemos BL si no se encuentra mejora tras generar 20*num_caract vecinos o si se han realizado 15000 evaluaciones de la función objetivo
+        if generados >= 20 * num_caract or eval >= 15000:
+            break
 
 
-    return W, fit, eval
+    elapsed = time.process_time() - start
+
+    tasa_clas = tasaClasificacion(Xtrain, Xtest, Ytrain, Ytest, W)
+    tasa_red = tasaReduccion(W)
+    fit = fitness(tasa_clas, tasa_red)
+
+    return W, fit, tasa_clas, tasa_red, elapsed
+
+
+# Implementación del algoritmo de enfriamiento simulado
+# param Xtrain = datos entrenamiento
+# param Ytrain = clases entrenamiento
+# param Xtest = datos test
+# param Ytest = clases test
+# return W = pesos, fit = fitness, tasa_clas = tasa de clasificación, tasa_red = tasa de reducción
+def ES(Xtrain, Ytrain, Xtest, Ytest):
+
+    return None
+
+
+# Implementación del algoritmo de búsqueda multiarranque básica
+# param Xtrain = datos entrenamiento
+# param Ytrain = clases entrenamiento
+# param Xtest = datos test
+# param Ytest = clases test
+# return W = pesos, fit = fitness, tasa_clas = tasa de clasificación, tasa_red = tasa de reducción
+def BMB(Xtrain, Ytrain, Xtest, Ytest):
+
+    return None
+
+
+# Implementación del algoritmo de ILS
+# param Xtrain = datos entrenamiento
+# param Ytrain = clases entrenamiento
+# param Xtest = datos test
+# param Ytest = clases test
+# return W = pesos, fit = fitness, tasa_clas = tasa de clasificación, tasa_red = tasa de reducción
+def ILS(Xtrain, Ytrain, Xtest, Ytest):
+    
+        return None
+
+
+# Implementación del algoritmo de ILS-ES
+# param Xtrain = datos entrenamiento
+# param Ytrain = clases entrenamiento
+# param Xtest = datos test
+# param Ytest = clases test
+# return W = pesos, fit = fitness, tasa_clas = tasa de clasificación, tasa_red = tasa de reducción
+def ILS_ES(Xtrain, Ytrain, Xtest, Ytest):
+
+    return None
+
+
+# Implementación del algoritmo de VNS
+# param Xtrain = datos entrenamiento
+# param Ytrain = clases entrenamiento
+# param Xtest = datos test
+# param Ytest = clases test
+# return W = pesos, fit = fitness, tasa_clas = tasa de clasificación, tasa_red = tasa de reducción
+def VNS(Xtrain, Ytrain, Xtest, Ytest):
+
+    return None
+
 
 
 
@@ -169,8 +244,8 @@ def busquedaLocal(Xtrain, Ytrain, W, fit):
 if __name__ == "__main__":
     files = ["../BIN/diabetes_", "../BIN/ozone-320_", "../BIN/spectf-heart_"]
     titulos = ["Diabetes", "Ozone", "Spectf-heart"]
-    algoritmos = ["AGG-BLX", "AGG-CA", "AGE-BLX", "AGE-CA", "AM-(10,1.0)", "AM-(10,0.1)", "AM-(10,0.1mej)"]
-    resultados = [[], [], [], [], [], [], []]
+    algoritmos = ["BL", "ES", "BMB", "ILS", "ILS-ES", "VNS"]
+    resultados = [[], [], [], [], [], []]
     
     seed = int(input("Introduce la semilla para generar números aleatorios: "))
     rng = np.random.default_rng(seed)
@@ -179,13 +254,13 @@ if __name__ == "__main__":
 
     # Para cada conjunto de datos
     for i in range(3):
-        tablaAggBlx = []
-        tablaAggArit = []
-        tablaAgeBlx = []
-        tablaAgeArit = []
-        tablaAmAll = []
-        tablaAmRand = []
-        tablaAmBest = []
+        tablaBL = []
+        tablaES = []
+        tablaBMB = []
+        tablaILS = []
+        tablaILS_ES = []
+        tablaVNS = []
+
         # Para cada partición
         for j in range(1,6):
             data = []
@@ -218,35 +293,31 @@ if __name__ == "__main__":
             Xtrain = X[:len(Xtrain)]
             Xtest = X[len(Xtrain):]
 
-            # Ejecutamos los algoritmos genéticos
-            Wagg_blx, fitness_agg_blx, tasa_clas_agg_blx, tasa_red_agg_blx, elapsed_agg_blx = AGG_BLX(Xtrain, Ytrain, Xtest, Ytest)
-            Wagg_arit, fitness_agg_arit, tasa_clas_agg_arit, tasa_red_agg_arit, elapsed_agg_arit = AGG_Arit(Xtrain, Ytrain, Xtest, Ytest)
-            Wage_blx, fitness_age_blx, tasa_clas_age_blx, tasa_red_age_blx, elapsed_age_blx = AGE_BLX(Xtrain, Ytrain, Xtest, Ytest)
-            Wage_arit, fitness_age_arit, tasa_clas_age_arit, tasa_red_age_arit, elapsed_age_arit = AGE_Arit(Xtrain, Ytrain, Xtest, Ytest)
+            # Ejecutamos los algoritmos pedidos
+            Wbl, fitness_bl, tasa_clas_bl, tasa_red_bl, elapsed_bl = busquedaLocal(Xtrain, Ytrain, Xtest, Ytest)
+            Wes, fitness_es, tasa_clas_es, tasa_red_es, elapsed_es = ES(Xtrain, Ytrain, Xtest, Ytest)
+            Wbmb, fitness_bmb, tasa_clas_bmb, tasa_red_bmb, elapsed_bmb = BMB(Xtrain, Ytrain, Xtest, Ytest)
+            Wils, fitness_ils, tasa_clas_ils, tasa_red_ils, elapsed_ils = ILS(Xtrain, Ytrain, Xtest, Ytest)
+            Wils_es, fitness_ils_es, tasa_clas_ils_es, tasa_red_ils_es, elapsed_ils_es = ILS_ES(Xtrain, Ytrain, Xtest, Ytest)
+            Wvns, fitness_vns, tasa_clas_vns, tasa_red_vns, elapsed_vns = VNS(Xtrain, Ytrain, Xtest, Ytest)
 
-            # Ejecutamos los algoritmos meméticos
-            Wam_all, fitness_am_all, tasa_clas_am_all, tasa_red_am_all, elapsed_am_all = AM_All(Xtrain, Ytrain, Xtest, Ytest)
-            Wam_rand, fitness_am_rand, tasa_clas_am_rand, tasa_red_am_rand, elapsed_am_rand = AM_Rand(Xtrain, Ytrain, Xtest, Ytest)
-            Wam_best, fitness_am_best, tasa_clas_am_best, tasa_red_am_best, elapsed_am_best = AM_Best(Xtrain, Ytrain, Xtest, Ytest)
 
             # Guardamos los resultados
-            tablaAggBlx.append([tasa_clas_agg_blx, tasa_red_agg_blx, fitness_agg_blx, elapsed_agg_blx, Wagg_blx])
-            tablaAggArit.append([tasa_clas_agg_arit, tasa_red_agg_arit, fitness_agg_arit, elapsed_agg_arit, Wagg_arit])
-            tablaAgeBlx.append([tasa_clas_age_blx, tasa_red_age_blx, fitness_age_blx, elapsed_age_blx, Wage_blx])
-            tablaAgeArit.append([tasa_clas_age_arit, tasa_red_age_arit, fitness_age_arit, elapsed_age_arit, Wage_arit])
-            tablaAmAll.append([tasa_clas_am_all, tasa_red_am_all, fitness_am_all, elapsed_am_all, Wam_all])
-            tablaAmRand.append([tasa_clas_am_rand, tasa_red_am_rand, fitness_am_rand, elapsed_am_rand, Wam_rand])
-            tablaAmBest.append([tasa_clas_am_best, tasa_red_am_best, fitness_am_best, elapsed_am_best, Wam_best])
+            tablaBL.append([tasa_clas_bl, tasa_red_bl, fitness_bl, elapsed_bl, Wbl])
+            tablaES.append([tasa_clas_es, tasa_red_es, fitness_es, elapsed_es, Wes])
+            tablaBMB.append([tasa_clas_bmb, tasa_red_bmb, fitness_bmb, elapsed_bmb, Wbmb])
+            tablaILS.append([tasa_clas_ils, tasa_red_ils, fitness_ils, elapsed_ils, Wils])
+            tablaILS_ES.append([tasa_clas_ils_es, tasa_red_ils_es, fitness_ils_es, elapsed_ils_es, Wils_es])
+            tablaVNS.append([tasa_clas_vns, tasa_red_vns, fitness_vns, elapsed_vns, Wvns])
 
 
         # Guardamos los resultados de cada conjunto de datos
-        resultados[i].append(tablaAggBlx)
-        resultados[i].append(tablaAggArit)
-        resultados[i].append(tablaAgeBlx)
-        resultados[i].append(tablaAgeArit)    
-        resultados[i].append(tablaAmAll)
-        resultados[i].append(tablaAmRand)
-        resultados[i].append(tablaAmBest)
+        resultados[i].append(tablaBL)
+        resultados[i].append(tablaES)
+        resultados[i].append(tablaBMB)
+        resultados[i].append(tablaILS)
+        resultados[i].append(tablaILS_ES)
+        resultados[i].append(tablaVNS)
 
 
 
@@ -256,8 +327,8 @@ if __name__ == "__main__":
         print(titulos[i])
         print("=================================")
 
-        for j in range(7):
-            print("*****", algoritmos[j], "*****")
+        for j,alg in enumerate(algoritmos):
+            print("*****", alg, "*****")
             print("\t\t %tasa_clas\t %tasa_red\t Fit.\t T")
             print("---------------------------------")
 
