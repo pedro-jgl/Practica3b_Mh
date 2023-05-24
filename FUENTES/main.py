@@ -121,8 +121,9 @@ def fitness(tasa_clas, tasa_red):
 # param Ytrain = clases entrenamiento
 # param Xtest = datos test
 # param Ytest = clases test
+# param tope = número máximo de evaluaciones de la función objetivo
 # return W = pesos, fit = fitness, tasa_clas = tasa de clasificación, tasa_red = tasa de reducción
-def busquedaLocal(Xtrain, Ytrain, Xtest, Ytest):
+def busquedaLocal(Xtrain, Ytrain, Xtest, Ytest, tope=15000):
     start = time.process_time()
 
     num_caract = Xtrain.shape[1]
@@ -136,7 +137,9 @@ def busquedaLocal(Xtrain, Ytrain, Xtest, Ytest):
     # Calculamos el fitness de la solución inicial
     fit = fitness(tasaClasificacion(Xtrain, Xtrain, Ytrain, Ytrain, W), tasaReduccion(W))
 
-    while True:
+
+    # Detenemos BL si no se encuentra mejora tras generar 20*num_caract vecinos o si se han realizado tope evaluaciones de la función objetivo
+    while generados < 20 * num_caract and eval < tope:
         # Mutamos una componente aleatoria sin repetición (emulamos un bucle do-while)
         while True:
             pos = rng.integers(num_caract)
@@ -148,7 +151,6 @@ def busquedaLocal(Xtrain, Ytrain, Xtest, Ytest):
         Wmod = W.copy()
         # Usamos una mutación normal con media 0 y desviación típica 0.3, después truncamos para que el valor esté en [0,1]
         Wmod[pos] += rng.normal(scale=0.3)
-        # Wmod = Wmod.clip(0,1)
         if Wmod[pos] < 0:
             Wmod[pos] = 0.0
         elif Wmod[pos] > 1:
@@ -169,10 +171,6 @@ def busquedaLocal(Xtrain, Ytrain, Xtest, Ytest):
         elif generados % num_caract == 0:
             mutadas = np.ones(num_caract)
 
-        # Detenemos BL si no se encuentra mejora tras generar 20*num_caract vecinos o si se han realizado 15000 evaluaciones de la función objetivo
-        if generados >= 20 * num_caract or eval >= 15000:
-            break
-
 
     elapsed = time.process_time() - start
 
@@ -181,6 +179,56 @@ def busquedaLocal(Xtrain, Ytrain, Xtest, Ytest):
     fit = fitness(tasa_clas, tasa_red)
 
     return W, fit, tasa_clas, tasa_red, elapsed
+
+
+
+# Método basado en BL ya implementada, pero con entradas y salidas adaptadas para acloparlo mejor a las mh a implementar
+# param Xtrain = datos entrenamiento
+# param Ytrain = clases entrenamiento
+# param W = solución inicial
+# param tope = número máximo de evaluaciones de la función objetivo
+# param K = número de componentes a mutar (vecindario)
+# return W = pesos, fit = fitness
+def busquedaLocalAux(Xtrain, Ytrain, W, tope, K=1):
+    num_caract = Xtrain.shape[1]
+    posDisponibles = np.arange(num_caract)
+    eval = 0
+    generados = 0
+
+    # Calculamos el fitness de la solución inicial
+    fit = fitness(tasaClasificacion(Xtrain, Xtrain, Ytrain, Ytrain, W), tasaReduccion(W))
+
+
+    # Detenemos BL si no se encuentra mejora tras generar 20*num_caract vecinos o si se han realizado tope evaluaciones de la función objetivo
+    while generados < 20 * num_caract and eval < tope:
+        # Mutamos K componentes aleatorias sin repetición
+        pos = rng.choice(posDisponibles, K, replace=False)
+        posDisponibles = np.setdiff1d(posDisponibles, pos)
+
+        Wmod = W.copy()
+        # Usamos una mutación normal con media 0 y desviación típica 0.3, después truncamos para que los valores estén en [0,1]
+        Wmod[pos] += rng.normal(scale=0.3, size=K)
+        Wmod = np.clip(Wmod, 0, 1)
+
+        generados += 1
+
+        # Calculamos el fitness de la solución mutada
+        fitmod = fitness(tasaClasificacion(Xtrain, Xtrain, Ytrain, Ytrain, Wmod), tasaReduccion(Wmod))
+        eval += 1
+
+        # Si el fitness de la solución mutada es mejor que el de la solución inicial, la solución inicial pasa a ser la mutada
+        if fitmod > fit:
+            W = Wmod
+            fit = fitmod
+            posDisponibles = np.arange(num_caract)
+            generados = 0
+        # Si en la siguiente iteración no se van a poder tomar K componentes, se resetea el vector de posiciones disponibles
+        elif posDisponibles.size < K:
+            posDisponibles = np.arange(num_caract)
+
+
+    return W, fit
+
 
 
 # Implementación del algoritmo de enfriamiento simulado
@@ -201,8 +249,28 @@ def ES(Xtrain, Ytrain, Xtest, Ytest):
 # param Ytest = clases test
 # return W = pesos, fit = fitness, tasa_clas = tasa de clasificación, tasa_red = tasa de reducción
 def BMB(Xtrain, Ytrain, Xtest, Ytest):
+    start = time.process_time()
 
-    return None
+    num_caract = Xtrain.shape[1]
+    num_iter = 15
+    num_eval = 1000
+
+    # Generamos num_iter soluciones aleatorias y le aplicamos BL a cada una de ellas
+    W_iniciales = rng.random((num_iter, num_caract))
+    W_calculados, fitness_calculados = [busquedaLocalAux(Xtrain, Ytrain, W_iniciales[i], num_eval) for i in range(num_iter)]
+
+    # Obtenemos la mejor solución y nos quedamos con esta
+    pos = np.argmax(fitness_calculados)
+    W = W_calculados[pos]
+
+    elapsed = time.process_time() - start
+
+    tasa_clas = tasaClasificacion(Xtrain, Xtest, Ytrain, Ytest, W)
+    tasa_red = tasaReduccion(W)
+    fit = fitness(tasa_clas, tasa_red)
+    
+
+    return W, fit, tasa_clas, tasa_red, elapsed
 
 
 # Implementación del algoritmo de ILS
@@ -212,8 +280,42 @@ def BMB(Xtrain, Ytrain, Xtest, Ytest):
 # param Ytest = clases test
 # return W = pesos, fit = fitness, tasa_clas = tasa de clasificación, tasa_red = tasa de reducción
 def ILS(Xtrain, Ytrain, Xtest, Ytest):
+    start = time.process_time()
+
+    num_caract = Xtrain.shape[1]
+    tope = 1000
+    iteraciones = 14    # Son 15 BL en total, contando la primera antes del bucle
+    t = 0.1 * num_caract
+
+    # Siempre se cambian al menos 2 características
+    if t < 2:
+        t = 2
     
-        return None
+    # Generamos una solución aleatoria y le aplicamos BL
+    W = rng.random(num_caract)
+    W, fit = busquedaLocalAux(Xtrain, Ytrain, W, tope)
+
+    for i in range(iteraciones):
+        # Hacemos una mutación fuerte de t componentes aleatorias
+        posicionesAmutar = rng.choice(num_caract, int(t), replace=False)
+        Wmod = W.copy()
+        Wmod[posicionesAmutar] = rng.random(int(t))
+
+        # Aplicamos BL a la solución mutada
+        Wmod, fitmod = busquedaLocalAux(Xtrain, Ytrain, Wmod, tope)
+
+        # Nos quedamos con la mejor solución
+        if fitmod > fit:
+            W = Wmod
+            fit = fitmod
+
+    elapsed = time.process_time() - start
+
+    tasa_clas = tasaClasificacion(Xtrain, Xtest, Ytrain, Ytest, W)
+    tasa_red = tasaReduccion(W)
+    fit = fitness(tasa_clas, tasa_red)
+
+    return W, fit, tasa_clas, tasa_red, elapsed
 
 
 # Implementación del algoritmo de ILS-ES
@@ -223,6 +325,44 @@ def ILS(Xtrain, Ytrain, Xtest, Ytest):
 # param Ytest = clases test
 # return W = pesos, fit = fitness, tasa_clas = tasa de clasificación, tasa_red = tasa de reducción
 def ILS_ES(Xtrain, Ytrain, Xtest, Ytest):
+    start = time.process_time()
+
+    num_caract = Xtrain.shape[1]
+    tope = 1000
+    iteraciones = 14    # Son 15 BL en total, contando la primera antes del bucle
+    t = 0.1 * num_caract
+
+    # Siempre se cambian al menos 2 características
+    if t < 2:
+        t = 2
+    
+    # Generamos una solución aleatoria y le aplicamos BL
+    W = rng.random(num_caract)
+    # ****** Cambiar la siguiente línea por ES en lugar de BL *******
+    # W, fit = busquedaLocalAux(Xtrain, Ytrain, W, tope)
+
+    for i in range(iteraciones):
+        # Hacemos una mutación fuerte de t componentes aleatorias
+        posicionesAmutar = rng.choice(num_caract, int(t), replace=False)
+        Wmod = W.copy()
+        Wmod[posicionesAmutar] = rng.random(int(t))
+
+        # Aplicamos ES a la solución mutada
+        # ****** Cambiar la siguiente línea por ES en lugar de BL *******
+        #Wmod, fitmod = busquedaLocalAux(Xtrain, Ytrain, Wmod, tope)
+
+        # Nos quedamos con la mejor solución
+        if fitmod > fit:
+            W = Wmod
+            fit = fitmod
+
+    elapsed = time.process_time() - start
+
+    tasa_clas = tasaClasificacion(Xtrain, Xtest, Ytrain, Ytest, W)
+    tasa_red = tasaReduccion(W)
+    fit = fitness(tasa_clas, tasa_red)
+
+    return W, fit, tasa_clas, tasa_red, elapsed
 
     return None
 
@@ -234,8 +374,52 @@ def ILS_ES(Xtrain, Ytrain, Xtest, Ytest):
 # param Ytest = clases test
 # return W = pesos, fit = fitness, tasa_clas = tasa de clasificación, tasa_red = tasa de reducción
 def VNS(Xtrain, Ytrain, Xtest, Ytest):
+    start = time.process_time()
 
-    return None
+    num_caract = Xtrain.shape[1]
+    Kmax = 3
+    K = 1
+    tope = 1000
+    iteraciones = 14    # Son 15 BL en total, contando la primera antes del bucle
+    t = 0.1 * num_caract
+
+    # Siempre se cambian al menos 2 características
+    if t < 2:
+        t = 2
+
+    # Generamos una solución aleatoria y le aplicamos BL
+    W = rng.random(num_caract)
+    W, fit = busquedaLocalAux(Xtrain, Ytrain, W, tope, K)
+
+    for i in range(iteraciones):
+        # Hacemos una mutación fuerte de t componentes aleatorias
+        posicionesAmutar = rng.choice(num_caract, int(t), replace=False)
+        Wmod = W.copy()
+        Wmod[posicionesAmutar] = rng.random(int(t))
+
+        # Aplicamos BL a la solución mutada
+        Wmod, fitmod = busquedaLocalAux(Xtrain, Ytrain, Wmod, tope, K)
+
+        # Nos quedamos con la mejor solución
+        if fitmod > fit:
+            W = Wmod
+            fit = fitmod
+            # Si se mejora, volvemos a K=1
+            K = 1
+        # Si no, probamos con otra vecindad
+        else:
+            K += 1
+            if K > Kmax:
+                K = 1
+
+    
+    elapsed = time.process_time() - start
+
+    tasa_clas = tasaClasificacion(Xtrain, Xtest, Ytrain, Ytest, W)
+    tasa_red = tasaReduccion(W)
+    fit = fitness(tasa_clas, tasa_red)
+
+    return W, fit, tasa_clas, tasa_red, elapsed
 
 
 
