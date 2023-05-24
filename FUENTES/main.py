@@ -12,6 +12,12 @@ def toFloat(x):
         return x
     
 
+# Función auxiliar para dar formato a los números
+def formatNumber(x):
+    # Redondeamos a dos decimales y cambiamos el punto por la coma
+    return "{:.2f}".format(x).replace('.', ',')
+    
+
 # Función para calcular el algoritmo kNN (con k = 1)
 # param X = conjunto de datos
 # param Y = elementos a clasificar
@@ -238,8 +244,168 @@ def busquedaLocalAux(Xtrain, Ytrain, W, tope, K=1):
 # param Ytest = clases test
 # return W = pesos, fit = fitness, tasa_clas = tasa de clasificación, tasa_red = tasa de reducción
 def ES(Xtrain, Ytrain, Xtest, Ytest):
+    start = time.process_time()
 
-    return None
+    num_caract = Xtrain.shape[1]
+    phi = 0.2
+    mu = 0.3
+    tempFinal = 0.0001
+    max_vecinos = 10 * num_caract
+    vecinos = 0
+    max_exitos = 0.1 * max_vecinos
+    exitos = 0
+    max_eval = 15000
+    eval = 0
+    M = max_eval / max_vecinos
+
+    # Generamos una solución aleatoria
+    W = rng.random(num_caract)
+    fit = fitness(tasaClasificacion(Xtrain, Xtrain, Ytrain, Ytrain, W), tasaReduccion(W))
+
+    # Inicializamos la temperatura
+    temp = mu * fit / -np.log(phi)
+
+    # Comprobamos siempre que la temperatura final sea menor que la inicial
+    while temp < tempFinal:
+        # Si no lo es, modificamos la temperatura final hasta que lo sea ?????????????????????
+        tempFinal *= 0.1
+
+    # Bucle principal
+    while temp > tempFinal and eval < max_eval:
+        vecinos = 0
+        exitos = 0
+
+        # Bucle interno
+        while vecinos < max_vecinos and exitos < max_exitos:
+            # Mutamos una componente aleatoria
+            pos = rng.integers(num_caract)
+            Wmod = W.copy()
+
+            # Usamos una mutación normal con media 0 y desviación típica 0.3, después truncamos para que los valores estén en [0,1]
+            Wmod[pos] += rng.normal(scale=0.3)
+            if Wmod[pos] < 0:
+                Wmod[pos] = 0.0
+            elif Wmod[pos] > 1:
+                Wmod[pos] = 1.0
+
+            vecinos += 1
+
+            # Calculamos el fitness de la solución mutada
+            fitmod = fitness(tasaClasificacion(Xtrain, Xtrain, Ytrain, Ytrain, Wmod), tasaReduccion(Wmod))
+            eval += 1
+
+            # En las transparencias se quiere minimizar, pero en este caso queremos maximizar, por lo que cambiamos el signo
+            dif_fit = fit - fitmod
+
+            # Si la solución mutada es mejor que la solución actual, la solución actual pasa a ser la mutada
+            if dif_fit < 0:
+                W = Wmod
+                fit = fitmod
+                exitos += 1
+            # Si no lo es, todavía hay una probabilidad de que la solución actual pase a ser la mutada
+            elif rng.random() < np.exp(-dif_fit / temp):
+                W = Wmod
+                fit = fitmod
+                # Aquí también se incrementa el número de éxitos????????????????
+                exitos += 1
+
+
+        # Esquema de enfriamiento: esquema de Cauchy modificado
+        beta = (temp - tempFinal) / (M * temp * tempFinal)
+        temp = temp / (1 + beta * temp)
+
+        # Si el número de éxitos en el enfriamiento actual es 0, paramos ?????????????????????
+        if exitos == 0:
+            break
+
+    elapsed = time.process_time() - start
+
+    tasa_clas = tasaClasificacion(Xtrain, Xtest, Ytrain, Ytest, W)
+    tasa_red = tasaReduccion(W)
+    fit = fitness(tasa_clas, tasa_red)
+
+    return W, fit, tasa_clas, tasa_red, elapsed
+
+
+# Método basado en ES ya implementado, pero con entradas y salidas adaptadas para acloparlo mejor a las mh a implementar
+# param Xtrain = datos entrenamiento
+# param Ytrain = clases entrenamiento
+# param W = solución inicial
+# param tope = número máximo de evaluaciones
+# return W = pesos, fit = fitness
+def ESAux(Xtrain, Ytrain, W, tope):
+    num_caract = Xtrain.shape[1]
+    phi = 0.2
+    mu = 0.3
+    tempFinal = 0.0001
+    max_vecinos = 10 * num_caract
+    vecinos = 0
+    max_exitos = 0.1 * max_vecinos
+    exitos = 0
+    max_eval = tope
+    eval = 0
+    M = max_eval / max_vecinos
+
+    # Calculamos el fitness del W dado
+    fit = fitness(tasaClasificacion(Xtrain, Xtrain, Ytrain, Ytrain, W), tasaReduccion(W))
+
+    # Inicializamos la temperatura
+    temp = mu * fit / -np.log(phi)
+
+    # Comprobamos siempre que la temperatura final sea menor que la inicial
+    while temp < tempFinal:
+        # Si no lo es, modificamos la temperatura final hasta que lo sea
+        tempFinal *= 0.1
+
+    # Bucle principal
+    while temp > tempFinal and eval < max_eval:
+        vecinos = 0
+        exitos = 0
+
+        # Bucle interno
+        while vecinos < max_vecinos and exitos < max_exitos:
+            # Mutamos una componente aleatoria
+            pos = rng.integers(num_caract)
+            Wmod = W.copy()
+
+            # Usamos una mutación normal con media 0 y desviación típica 0.3, después truncamos para que los valores estén en [0,1]
+            Wmod[pos] += rng.normal(scale=0.3)
+            if Wmod[pos] < 0:
+                Wmod[pos] = 0.0
+            elif Wmod[pos] > 1:
+                Wmod[pos] = 1.0
+
+            vecinos += 1
+
+            # Calculamos el fitness de la solución mutada
+            fitmod = fitness(tasaClasificacion(Xtrain, Xtrain, Ytrain, Ytrain, Wmod), tasaReduccion(Wmod))
+            eval += 1
+
+            # En las transparencias se quiere minimizar, pero en este caso queremos maximizar, por lo que cambiamos el signo
+            dif_fit = fit - fitmod
+
+            # Si la solución mutada es mejor que la solución actual, la solución actual pasa a ser la mutada
+            if dif_fit < 0:
+                W = Wmod
+                fit = fitmod
+                exitos += 1
+            # Si no lo es, todavía hay una probabilidad de que la solución actual pase a ser la mutada
+            elif rng.random() < np.exp(-dif_fit / temp):
+                W = Wmod
+                fit = fitmod
+                exitos += 1
+
+
+        # Esquema de enfriamiento: esquema de Cauchy modificado
+        beta = (temp - tempFinal) / (M * temp * tempFinal)
+        temp = temp / (1 + beta * temp)
+
+        # Si el número de éxitos en el enfriamiento actual es 0, paramos
+        if exitos == 0:
+            break
+
+
+    return W, fit
 
 
 # Implementación del algoritmo de búsqueda multiarranque básica
@@ -257,7 +423,8 @@ def BMB(Xtrain, Ytrain, Xtest, Ytest):
 
     # Generamos num_iter soluciones aleatorias y le aplicamos BL a cada una de ellas
     W_iniciales = rng.random((num_iter, num_caract))
-    W_calculados, fitness_calculados = [busquedaLocalAux(Xtrain, Ytrain, W_iniciales[i], num_eval) for i in range(num_iter)]
+    resultadosBL = np.array([busquedaLocalAux(Xtrain, Ytrain, W_iniciales[i], num_eval) for i in range(num_iter)])
+    W_calculados, fitness_calculados = resultadosBL[:, 0], resultadosBL[:, 1]
 
     # Obtenemos la mejor solución y nos quedamos con esta
     pos = np.argmax(fitness_calculados)
@@ -336,10 +503,10 @@ def ILS_ES(Xtrain, Ytrain, Xtest, Ytest):
     if t < 2:
         t = 2
     
-    # Generamos una solución aleatoria y le aplicamos BL
+    # Generamos una solución aleatoria y le aplicamos ES
     W = rng.random(num_caract)
-    # ****** Cambiar la siguiente línea por ES en lugar de BL *******
-    # W, fit = busquedaLocalAux(Xtrain, Ytrain, W, tope)
+    # También hace falta tope para ES???????????????
+    W, fit = ESAux(Xtrain, Ytrain, W, tope)
 
     for i in range(iteraciones):
         # Hacemos una mutación fuerte de t componentes aleatorias
@@ -348,8 +515,7 @@ def ILS_ES(Xtrain, Ytrain, Xtest, Ytest):
         Wmod[posicionesAmutar] = rng.random(int(t))
 
         # Aplicamos ES a la solución mutada
-        # ****** Cambiar la siguiente línea por ES en lugar de BL *******
-        #Wmod, fitmod = busquedaLocalAux(Xtrain, Ytrain, Wmod, tope)
+        Wmod, fitmod = ESAux(Xtrain, Ytrain, Wmod, tope)
 
         # Nos quedamos con la mejor solución
         if fitmod > fit:
@@ -363,8 +529,6 @@ def ILS_ES(Xtrain, Ytrain, Xtest, Ytest):
     fit = fitness(tasa_clas, tasa_red)
 
     return W, fit, tasa_clas, tasa_red, elapsed
-
-    return None
 
 
 # Implementación del algoritmo de VNS
@@ -506,21 +670,21 @@ if __name__ == "__main__":
 
 
 
-    # Imprimimos los resultados
+    # Escribimos los resultados en un fichero csv
+    # Para cada conjunto de datos
     for i in range(3):
-        print("=================================")
-        print(titulos[i])
-        print("=================================")
-
+        # Para cada algoritmo
         for j,alg in enumerate(algoritmos):
-            print("*****", alg, "*****")
-            print("\t\t %tasa_clas\t %tasa_red\t Fit.\t T")
-            print("---------------------------------")
-
-            for k in range(5):
-                print("Partición ", str(k+1), "\t", resultados[i][j][k][0], "\t", resultados[i][j][k][1], "\t", resultados[i][j][k][2], "\t", resultados[i][j][k][3])
-                print("W: ", resultados[i][j][k][4])
-
-            print("\n")
+            with open("../../RESULTADOS/resultados_" + alg + "_" + titulos[i] + ".csv", "w") as f:
+                # Cabecera de la tabla
+                f.write(",%_clas,%_red,Fit.,T\n")
+                # Datos de cada partición
+                for k in range(5):
+                    f.write("Partición " + str(k+1) + "," + str(formatNumber(resultados[i][j][k][0])) +
+                             "," + str(formatNumber(resultados[i][j][k][1])) + "," + str(formatNumber(resultados[i][j][k][2])) +
+                               "," + str(formatNumber(resultados[i][j][k][3])) + "\n")
+                    
+                    # Imprimimos los pesos por pantalla
+                    print("Pesos de la partición " + str(k+1) + " del algoritmo " + alg + " con el conjunto de datos " + titulos[i] + ":" + "\n" + str(resultados[i][j][k][4]) + "\n")
             
 
