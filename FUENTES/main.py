@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import csv
 
 # Semilla para la generación de números aleatorios
 rng = np.random.default_rng(0)
@@ -423,7 +424,7 @@ def BMB(Xtrain, Ytrain, Xtest, Ytest):
 
     # Generamos num_iter soluciones aleatorias y le aplicamos BL a cada una de ellas
     W_iniciales = rng.random((num_iter, num_caract))
-    resultadosBL = np.array([busquedaLocalAux(Xtrain, Ytrain, W_iniciales[i], num_eval) for i in range(num_iter)])
+    resultadosBL = np.array([busquedaLocalAux(Xtrain, Ytrain, W_iniciales[i], num_eval) for i in range(num_iter)], dtype=object)
     W_calculados, fitness_calculados = resultadosBL[:, 0], resultadosBL[:, 1]
 
     # Obtenemos la mejor solución y nos quedamos con esta
@@ -676,13 +677,12 @@ if __name__ == "__main__":
         # Para cada algoritmo
         for j,alg in enumerate(algoritmos):
             with open("../../RESULTADOS/resultados_" + alg + "_" + titulos[i] + ".csv", "w") as f:
+                writer = csv.writer(f)
                 # Cabecera de la tabla
-                f.write(",%_clas,%_red,Fit.,T\n")
+                writer.writerow(["", "%_clas", "%_red", "Fit.", "T"])
                 # Datos de cada partición
                 for k in range(5):
-                    f.write("Partición " + str(k+1) + "," + str(formatNumber(resultados[i][j][k][0])) +
-                             "," + str(formatNumber(resultados[i][j][k][1])) + "," + str(formatNumber(resultados[i][j][k][2])) +
-                               "," + str(formatNumber(resultados[i][j][k][3])) + "\n")
+                    writer.writerow(["Partición " + str(k+1)] + [formatNumber(resultados[i][j][k][l]) for l in range(4)])
                     
                     # Imprimimos los pesos por pantalla
                     print("Pesos de la partición " + str(k+1) + " del algoritmo " + alg + " con el conjunto de datos " + titulos[i] + ":" + "\n" + str(resultados[i][j][k][4]) + "\n")
