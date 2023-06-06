@@ -443,6 +443,39 @@ def BMB(Xtrain, Ytrain, Xtest, Ytest):
     return W, fit, tasa_clas, tasa_red, elapsed
 
 
+# Algoritmo extra
+# Implementación del algoritmo de búsqueda multiarranque básica con enfriamiento simulado
+# param Xtrain = datos entrenamiento
+# param Ytrain = clases entrenamiento
+# param Xtest = datos test
+# param Ytest = clases test
+# return W = pesos, fit = fitness, tasa_clas = tasa de clasificación, tasa_red = tasa de reducción
+def BMB_ES(Xtrain, Ytrain, Xtest, Ytest):
+    start = time.process_time()
+
+    num_caract = Xtrain.shape[1]
+    num_iter = 15
+    num_eval = 1000
+
+    # Generamos num_iter soluciones aleatorias y le aplicamos ES a cada una de ellas
+    W_iniciales = rng.random((num_iter, num_caract))
+    resultadosES = np.array([ESAux(Xtrain, Ytrain, W_iniciales[i], num_eval) for i in range(num_iter)], dtype=object)
+    W_calculados, fitness_calculados = resultadosES[:, 0], resultadosES[:, 1]
+
+    # Obtenemos la mejor solución y nos quedamos con esta
+    pos = np.argmax(fitness_calculados)
+    W = W_calculados[pos]
+
+    elapsed = time.process_time() - start
+
+    tasa_clas = tasaClasificacion(Xtrain, Xtest, Ytrain, Ytest, W)
+    tasa_red = tasaReduccion(W)
+    fit = fitness(tasa_clas, tasa_red)
+    
+
+    return W, fit, tasa_clas, tasa_red, elapsed
+
+
 # Implementación del algoritmo de ILS
 # param Xtrain = datos entrenamiento
 # param Ytrain = clases entrenamiento
@@ -595,8 +628,8 @@ def VNS(Xtrain, Ytrain, Xtest, Ytest):
 if __name__ == "__main__":
     files = ["../BIN/diabetes_", "../BIN/ozone-320_", "../BIN/spectf-heart_"]
     titulos = ["Diabetes", "Ozone", "Spectf-heart"]
-    algoritmos = ["BL", "ES", "BMB", "ILS", "ILS-ES", "VNS"]
-    resultados = [[], [], [], [], [], []]
+    algoritmos = ["BL", "ES", "BMB", "BMB-ES", "ILS", "ILS-ES", "VNS"]
+    resultados = [[], [], [], [], [], [], []]
     
     seed = int(input("Introduce la semilla para generar números aleatorios: "))
     rng = np.random.default_rng(seed)
@@ -608,6 +641,7 @@ if __name__ == "__main__":
         tablaBL = []
         tablaES = []
         tablaBMB = []
+        tablaBMB_ES = []
         tablaILS = []
         tablaILS_ES = []
         tablaVNS = []
@@ -648,6 +682,7 @@ if __name__ == "__main__":
             Wbl, fitness_bl, tasa_clas_bl, tasa_red_bl, elapsed_bl = busquedaLocal(Xtrain, Ytrain, Xtest, Ytest)
             Wes, fitness_es, tasa_clas_es, tasa_red_es, elapsed_es = ES(Xtrain, Ytrain, Xtest, Ytest)
             Wbmb, fitness_bmb, tasa_clas_bmb, tasa_red_bmb, elapsed_bmb = BMB(Xtrain, Ytrain, Xtest, Ytest)
+            Wbmb_es, fitness_bmb_es, tasa_clas_bmb_es, tasa_red_bmb_es, elapsed_bmb_es = BMB_ES(Xtrain, Ytrain, Xtest, Ytest)
             Wils, fitness_ils, tasa_clas_ils, tasa_red_ils, elapsed_ils = ILS(Xtrain, Ytrain, Xtest, Ytest)
             Wils_es, fitness_ils_es, tasa_clas_ils_es, tasa_red_ils_es, elapsed_ils_es = ILS_ES(Xtrain, Ytrain, Xtest, Ytest)
             Wvns, fitness_vns, tasa_clas_vns, tasa_red_vns, elapsed_vns = VNS(Xtrain, Ytrain, Xtest, Ytest)
@@ -657,6 +692,7 @@ if __name__ == "__main__":
             tablaBL.append([tasa_clas_bl, tasa_red_bl, fitness_bl, elapsed_bl, Wbl])
             tablaES.append([tasa_clas_es, tasa_red_es, fitness_es, elapsed_es, Wes])
             tablaBMB.append([tasa_clas_bmb, tasa_red_bmb, fitness_bmb, elapsed_bmb, Wbmb])
+            tablaBMB_ES.append([tasa_clas_bmb_es, tasa_red_bmb_es, fitness_bmb_es, elapsed_bmb_es, Wbmb_es])
             tablaILS.append([tasa_clas_ils, tasa_red_ils, fitness_ils, elapsed_ils, Wils])
             tablaILS_ES.append([tasa_clas_ils_es, tasa_red_ils_es, fitness_ils_es, elapsed_ils_es, Wils_es])
             tablaVNS.append([tasa_clas_vns, tasa_red_vns, fitness_vns, elapsed_vns, Wvns])
@@ -666,6 +702,7 @@ if __name__ == "__main__":
         resultados[i].append(tablaBL)
         resultados[i].append(tablaES)
         resultados[i].append(tablaBMB)
+        resultados[i].append(tablaBMB_ES)
         resultados[i].append(tablaILS)
         resultados[i].append(tablaILS_ES)
         resultados[i].append(tablaVNS)
@@ -677,7 +714,7 @@ if __name__ == "__main__":
     for i in range(3):
         # Para cada algoritmo
         for j,alg in enumerate(algoritmos):
-            with open("../../RESULTADOS/resultados_" + alg + "_" + titulos[i] + ".csv", "w") as f:
+            with open("../RESULTADOS/resultados_" + alg + "_" + titulos[i] + ".csv", "w") as f:
                 writer = csv.writer(f)
                 # Cabecera de la tabla
                 writer.writerow(["", "%_clas", "%_red", "Fit.", "T"])
