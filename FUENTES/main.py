@@ -268,11 +268,14 @@ def ES(Xtrain, Ytrain, Xtest, Ytest):
 
     # Comprobamos siempre que la temperatura final sea menor que la inicial
     while temp < tempFinal:
-        # Si no lo es, modificamos la temperatura final hasta que lo sea ?????????????????????
+        # Si no lo es, modificamos la temperatura final hasta que lo sea
         tempFinal *= 0.1
 
+    # Calculamos beta
+    beta = (temp - tempFinal) / (M * temp * tempFinal)
+
     # Bucle principal
-    while temp > tempFinal and eval < max_eval:
+    while eval < max_eval:
         vecinos = 0
         exitos = 0
 
@@ -307,15 +310,12 @@ def ES(Xtrain, Ytrain, Xtest, Ytest):
             elif rng.random() < np.exp(-dif_fit / temp):
                 W = Wmod
                 fit = fitmod
-                # Aquí también se incrementa el número de éxitos????????????????
                 exitos += 1
 
-
         # Esquema de enfriamiento: esquema de Cauchy modificado
-        beta = (temp - tempFinal) / (M * temp * tempFinal)
         temp = temp / (1 + beta * temp)
 
-        # Si el número de éxitos en el enfriamiento actual es 0, paramos ?????????????????????
+        # Si el número de éxitos en el enfriamiento actual es 0
         if exitos == 0:
             break
 
@@ -358,8 +358,11 @@ def ESAux(Xtrain, Ytrain, W, tope):
         # Si no lo es, modificamos la temperatura final hasta que lo sea
         tempFinal *= 0.1
 
+    # Calculamos beta
+    beta = (temp - tempFinal) / (M * temp * tempFinal)
+
     # Bucle principal
-    while temp > tempFinal and eval < max_eval:
+    while eval < max_eval:
         vecinos = 0
         exitos = 0
 
@@ -398,7 +401,6 @@ def ESAux(Xtrain, Ytrain, W, tope):
 
 
         # Esquema de enfriamiento: esquema de Cauchy modificado
-        beta = (temp - tempFinal) / (M * temp * tempFinal)
         temp = temp / (1 + beta * temp)
 
         # Si el número de éxitos en el enfriamiento actual es 0, paramos
@@ -506,7 +508,6 @@ def ILS_ES(Xtrain, Ytrain, Xtest, Ytest):
     
     # Generamos una solución aleatoria y le aplicamos ES
     W = rng.random(num_caract)
-    # También hace falta tope para ES???????????????
     W, fit = ESAux(Xtrain, Ytrain, W, tope)
 
     for i in range(iteraciones):
