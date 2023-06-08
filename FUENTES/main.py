@@ -714,7 +714,7 @@ if __name__ == "__main__":
     for i in range(3):
         # Para cada algoritmo
         for j,alg in enumerate(algoritmos):
-            with open("../RESULTADOS/resultados_" + alg + "_" + titulos[i] + ".csv", "w") as f:
+            with open("../BIN/RESULTADOS/resultados_" + alg + "_" + titulos[i] + ".csv", "w") as f:
                 writer = csv.writer(f)
                 # Cabecera de la tabla
                 writer.writerow(["", "%_clas", "%_red", "Fit.", "T"])
